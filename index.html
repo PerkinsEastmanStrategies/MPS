@@ -8,10 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .container {
-            display: flex;
-            height: 100vh;
-        }
+        
+
         .sidebar {
     width: 22%;
     padding: 20px;
@@ -50,6 +48,15 @@
     background: #ddd;
 }
 
+.chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 30px;
+    width: 100%;
+}
+
+
 #schoolEnrollmentChart {
     border: 1px solid #ccc;
     padding: 5px;
@@ -82,14 +89,19 @@
     border: 2px solid #007acc;
     background: #f0f8ff;
 }
+.container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
 
-        .main-content {
-            width: 80%;
-            display: grid;
-            grid-template-columns: 1fr 1fr; /* Two columns */
-            grid-template-rows: auto auto auto;  /* Two rows */
-            gap: 30px; /* Space between charts */
-        }
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 20px;
+}
 
 
         canvas {
@@ -146,18 +158,41 @@
                 <img src="MPS-logo-RGB.jpg" alt="MPS Logo" style="height: 60px;">
             </div>
             
+            <div style="grid-column: 1 / -1; text-align: center;">
+                <label for="viewToggle"><strong>View:</strong></label>
+                <select id="viewToggle">
+                    <option value="enrollment">Enrollment</option>
+                    <option value="facilities">Facilities</option>
+                </select>
+            </div>
             
-            <!-- First Row -->
-            <canvas id="totalEnrollmentChart" class="grid-item" style="grid-column: 1;"></canvas>
-            <canvas id="enrollmentTrendChart" class="grid-item" style="grid-column: 2;"></canvas>
+            <div id="enrollmentCharts" class="chart-grid">
+                <!-- First Row -->
+                <canvas id="totalEnrollmentChart" class="grid-item"></canvas>
+                <canvas id="enrollmentTrendChart" class="grid-item"></canvas>
+            
+                <!-- Second Row -->
+                <canvas id="historicChangeChart" class="grid-item"></canvas>
+                <canvas id="enrollmentHistogram" class="grid-item"></canvas>
+            </div>
+            
+           <!-- Facilities Chart Grid -->
+<div id="facilitiesCharts" class="chart-grid" style="display: none;">
+    <!-- Building Age Histogram -->
         
-            <!-- Second Row -->
-            <canvas id="historicChangeChart" class="grid-item" style="grid-column: 1;"></canvas>
-            <canvas id="enrollmentHistogram" class="grid-item" style="grid-column: 2;"></canvas>
+    <canvas id="buildingAgeChart" class="grid-item"></canvas>
+    <!-- Enrollment vs. Square Feet -->
+      
+<canvas id="enrollmentVsSqftChart" class="grid-item"></canvas>
+<canvas id="utilizationDonutChart" width="400" height="400"></canvas>
+<canvas id="fciPieChart"></canvas>
+
+
+</div>
 
         </div>
         
+        <script src="Script.js"></script>
+        </body>
+        </html>
         
-    <script src="Script.js"></script>
-</body>
-</html>

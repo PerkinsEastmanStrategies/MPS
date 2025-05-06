@@ -25,6 +25,121 @@ document.addEventListener("DOMContentLoaded", function () {
 
     
     let allData = [];
+    let facilitiesData = [];
+let buildingAgeChart;
+let enrollmentVsSqftChart;
+let fciPieChart;
+
+
+Papa.parse("MPS_Facilities.csv", {
+    download: true,
+    header: true,
+    complete: function (results) {
+        facilitiesData = results.data;
+        updateBuildingAgeChart("All Regions"); // initialize
+        updateEnrollmentVsSqftChart("All Regions");
+        updateUtilizationDonutChart(facilitiesData)
+        updateFciPieChart(facilitiesData);
+
+    }
+});
+let utilizationDonutChart;
+
+function updateUtilizationDonutChart(data) {
+    const categories = ["High", "Good", "Low", "Very Low"];
+    const categoryCounts = { High: 0, Good: 0, Low: 0, "Very Low": 0 };
+
+    data.forEach(d => {
+        const cat = d["Utilization Categories"]?.trim();
+        if (categories.includes(cat)) {
+            categoryCounts[cat]++;
+        }
+    });
+
+    const total = Object.values(categoryCounts).reduce((a, b) => a + b, 0);
+    const percentages = categories.map(cat => total ? (categoryCounts[cat] / total) * 100 : 0);
+
+    if (utilizationDonutChart) utilizationDonutChart.destroy();
+
+    const ctx = document.getElementById("utilizationDonutChart").getContext("2d");
+    utilizationDonutChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels: categories,
+            datasets: [{
+                data: percentages,
+                backgroundColor: ["#2ca02c", "#1f77b4", "#ff7f0e", "#d62728"]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: "% of Schools by Utilization Category",
+                    font: { size: 18 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${ctx.raw.toFixed(1)}%`
+                    }
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function updateFciPieChart(data) {
+    const categories = ["Great", "Good", "Fair", "Poor"];
+    const counts = { Great: 0, Good: 0, Fair: 0, Poor: 0 };
+
+    data.forEach(d => {
+        const rating = d["FCI Rating"]?.trim();
+        if (categories.includes(rating)) {
+            counts[rating]++;
+        }
+    });
+
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    const percentages = categories.map(cat => total ? (counts[cat] / total) * 100 : 0);
+
+    if (fciPieChart) fciPieChart.destroy();
+
+    const ctx = document.getElementById("fciPieChart").getContext("2d");
+    fciPieChart = new Chart(ctx, {
+        type: "pie",
+        data: {
+            labels: categories,
+            datasets: [{
+                data: percentages,
+                backgroundColor: ["#2ca02c", "#ff7f0e", "#d62728", "#9467bd"]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: "% of Schools by FCI Rating",
+                    font: { size: 18 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.label}: ${ctx.raw.toFixed(1)}%`
+                    }
+                },
+                legend: {
+                    position: "bottom"
+                }
+            }
+        }
+    });
+}
 
     // Load CSV Data
     Papa.parse("MPS Data.csv", {
@@ -193,12 +308,103 @@ document.addEventListener("DOMContentLoaded", function () {
         let selectedRegion = regionSelect.value === "All" ? "All Regions" : regionSelect.value;
         populateSchools(selectedRegion);
         updateCharts(selectedRegion);
+        updateBuildingAgeChart(selectedRegion);
+        updateEnrollmentVsSqftChart(selectedRegion);
+    
+        // ✅ Add these two lines:
+        const filteredFacilities = selectedRegion === "All Regions"
+            ? facilitiesData
+            : facilitiesData.filter(d => d["Geographic Region"]?.trim() === selectedRegion);
+        
+        updateUtilizationDonutChart(filteredFacilities); // already working
+        updateFciPieChart(filteredFacilities); // ✅ this line makes the FCI chart update!
     });
+    
+    
 
     schoolSelect.addEventListener("change", function () {
         updateSchoolDetails(schoolSelect.value);
     });
     
+    function updateBuildingAgeChart(region) {
+        if (!facilitiesData || facilitiesData.length === 0) return;
+    
+        const bins = ["1880","1890","1900","1910","1920", "1920", "1930", "1940", "1950", "1960", "1970", "1980", "1990", "2000", "2010", "2020"];
+
+        const totalCounts = {};
+        const regionCounts = {};
+    
+        bins.forEach(bin => {
+            totalCounts[bin] = 0;
+            regionCounts[bin] = 0;
+        });
+    
+        facilitiesData.forEach(d => {
+            const decade = d["decade"];
+            const regionMatch = d["Geographic Region"]?.trim() === region;
+    
+            if (bins.includes(decade)) {
+                totalCounts[decade]++;
+                if (region === "All Regions" || regionMatch) {
+                    regionCounts[decade]++;
+                }
+            }
+        });
+    
+        const total = Object.values(totalCounts).reduce((a, b) => a + b, 0);
+        const regionTotal = Object.values(regionCounts).reduce((a, b) => a + b, 0);
+    
+        const districtPercents = bins.map(b => total ? (totalCounts[b] / total) * 100 : 0);
+        const regionPercents = bins.map(b => regionTotal ? (regionCounts[b] / regionTotal) * 100 : 0);
+    
+        if (buildingAgeChart) buildingAgeChart.destroy();
+    
+        const ctx = document.getElementById("buildingAgeChart").getContext("2d");
+        buildingAgeChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: bins,
+                datasets: [
+                    {
+                        label: "Selected Region",
+                        data: regionPercents,
+                        backgroundColor: "#FF530D"
+                    },
+                    {
+                        label: "District",
+                        data: districtPercents,
+                        backgroundColor: "#A9A9A9"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: "Building Age by Decade (% of Facilities)",
+                        font: { size: 18 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(1)}%`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: "Decade" }
+                    },
+                    y: {
+                        title: { display: true, text: "% of Buildings" },
+                        ticks: { callback: val => `${val}%` },
+                        max: 50
+                    }
+                }
+            }
+        });
+    }
     
 
     function updateCharts(region) {
@@ -223,6 +429,14 @@ document.addEventListener("DOMContentLoaded", function () {
         updateBarChart(filteredData);
         updateEnrollmentTrends(filteredData);
         updateTotalEnrollmentChart(filteredData);
+        const facilitiesFiltered = region === "All Regions"
+        ? facilitiesData
+        : facilitiesData.filter(d => d["Geographic Region"]?.trim() === region);
+    
+    updateUtilizationDonutChart(facilitiesFiltered);
+    updateFciPieChart(facilitiesFiltered);  // ✅ Use the right variable name
+    
+
     }
     
     
@@ -353,6 +567,64 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
     
+    function updateEnrollmentVsSqftChart(region) {
+        if (!facilitiesData || facilitiesData.length === 0) return;
+    
+        const filtered = facilitiesData.filter(d => 
+            region === "All Regions" || d["Geographic Region"]?.trim() === region
+        );
+    
+        const points = filtered.map(d => {
+            const enrollment = parseInt(d["2023-2024"], 10);
+            const sqft = parseInt(d["Square Feet"]?.replace(/,/g, ""), 10);
+            if (!isNaN(enrollment) && !isNaN(sqft)) {
+                return { x: enrollment, y: sqft, label: d["Site"] || "Unknown" };
+            }
+            return null;
+        }).filter(Boolean);
+    
+        if (enrollmentVsSqftChart) enrollmentVsSqftChart.destroy();
+    
+        const ctx = document.getElementById("enrollmentVsSqftChart").getContext("2d");
+        enrollmentVsSqftChart = new Chart(ctx, {
+            type: "scatter",
+            data: {
+                datasets: [{
+                    label: "School Buildings",
+                    data: points,
+                    backgroundColor: "#00857D",
+                    borderColor: "black",
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.raw.label}: ${ctx.raw.x} students, ${ctx.raw.y.toLocaleString()} sqft`
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: "Enrollment vs. Square Feet (2023-2024)",
+                        font: { size: 18 }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: "Enrollment (2023-2024)" },
+                        beginAtZero: true
+                    },
+                    y: {
+                        title: { display: true, text: "Square Feet" },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
     
 
     function updateHistogram(data) {
@@ -459,5 +731,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function getRandomColor() {
         return `hsl(${Math.random() * 360}, 70%, 50%)`;
+    }
+});
+const viewToggle = document.getElementById("viewToggle");
+const enrollmentCharts = document.getElementById("enrollmentCharts");
+const facilitiesCharts = document.getElementById("facilitiesCharts");
+
+viewToggle.addEventListener("change", function () {
+    const selectedView = this.value;
+
+    if (selectedView === "enrollment") {
+        enrollmentCharts.style.display = "grid";
+        facilitiesCharts.style.display = "none";
+    } else if (selectedView === "facilities") {
+        enrollmentCharts.style.display = "none";
+        facilitiesCharts.style.display = "grid";
     }
 });
